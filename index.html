@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>残り時間計算</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+  :root {
+    --ink: #12151C;
+    --surface: #1A1E28;
+    --surface-2: #20242F;
+    --parchment: #EDE7DA;
+    --muted: #8B93A6;
+    --gold: #C9A227;
+    --vermilion: #B5473F;
+    --line: #2A2F3B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--ink);
+    color: var(--parchment);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+
+  .wrap { width: 100%; max-width: 720px; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 32px;
+    margin: 0 0 8px;
+    color: var(--parchment);
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 40px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+
+  .inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 640px) {
+    .inputs { grid-template-columns: 1fr 1fr 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+
+  label { display: flex; flex-direction: column; gap: 6px; }
+
+  label span {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  input {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+  }
+  input::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+  input:focus { border-color: var(--gold); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .card-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .card-value {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 34px;
+    margin-bottom: 4px;
+  }
+
+  .card-value .unit {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 16px;
+    color: var(--muted);
+    margin-right: 10px;
+  }
+
+  .card-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.7;
+  }
+
+  .ruler-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .hourglass-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0 4px;
+  }
+
+  .hourglass-caption {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+  }
+
+  .hourglass-caption .age {
+    color: var(--parchment);
+    font-family: 'Shippori Mincho', serif;
+    font-size: 16px;
+  }
+
+  #sandTop, #sandBottom {
+    transition: y 0.6s ease, height 0.6s ease;
+  }
+
+  .grain {
+    fill: var(--gold);
+    opacity: 0;
+    animation: fall 1.3s linear infinite;
+  }
+  .grain:nth-child(2) { animation-delay: 0.43s; }
+  .grain:nth-child(3) { animation-delay: 0.86s; }
+
+  @keyframes fall {
+    0%   { transform: translateY(0px);  opacity: 0; }
+    8%   { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { transform: translateY(16px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">REMAINING TIME</div>
+  <h1>残り時間計算</h1>
+  <p class="subtitle">現在の年齢・平均寿命・就労可能年齢から、残された時間を可視化します。</p>
+
+  <div class="panel">
+    <div class="inputs">
+      <label>
+        <span>現在の年齢</span>
+        <input type="number" id="currentAgeInput" value="35" step="0.1" min="0">
+      </label>
+      <label>
+        <span>平均寿命（歳）</span>
+        <input type="number" id="lifeExpectancy" value="84">
+      </label>
+      <label>
+        <span>就労可能年齢（歳）</span>
+        <input type="number" id="workEndAge" value="70">
+      </label>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      <div class="card-label">平均寿命まで</div>
+      <div class="card-value" id="lifeValue" style="color: var(--gold);">-</div>
+      <div class="card-sub" id="lifeSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">就労可能年齢まで</div>
+      <div class="card-value" id="workValue" style="color: var(--vermilion);">-</div>
+      <div class="card-sub" id="workSub"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ruler-title" id="rulerTitle">人生の砂時計</div>
+    <div class="hourglass-wrap">
+      <svg viewBox="0 0 200 300" width="200" height="300">
+        <defs>
+          <clipPath id="topClip">
+            <polygon points="25,24 175,24 105,150 95,150" />
+          </clipPath>
+          <clipPath id="bottomClip">
+            <polygon points="95,150 105,150 175,276 25,276" />
+          </clipPath>
+        </defs>
+
+        <!-- frame -->
+        <rect x="20" y="10" width="160" height="8" rx="4" fill="none" stroke="var(--line)" stroke-width="2" />
+        <rect x="20" y="282" width="160" height="8" rx="4" fill="none" stroke="var(--line)" stroke-width="2" />
+        <line x1="25" y1="18" x2="25" y2="24" stroke="var(--line)" stroke-width="2" />
+        <line x1="175" y1="18" x2="175" y2="24" stroke="var(--line)" stroke-width="2" />
+        <line x1="25" y1="276" x2="25" y2="282" stroke="var(--line)" stroke-width="2" />
+        <line x1="175" y1="276" x2="175" y2="282" stroke="var(--line)" stroke-width="2" />
+
+        <!-- glass outline -->
+        <polygon points="25,24 175,24 105,150 95,150" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" />
+        <polygon points="95,150 105,150 175,276 25,276" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" />
+
+        <!-- sand -->
+        <rect id="sandTop" x="15" y="24" width="170" height="0" fill="var(--gold)" clip-path="url(#topClip)" />
+        <rect id="sandBottom" x="15" y="150" width="170" height="0" fill="var(--gold)" clip-path="url(#bottomClip)" />
+
+        <!-- falling grains -->
+        <circle class="grain" cx="98" cy="150" r="1.6" />
+        <circle class="grain" cx="100" cy="150" r="1.6" />
+        <circle class="grain" cx="102" cy="150" r="1.6" />
+
+        <!-- work-end marker -->
+        <line id="workMarkerLine" x1="60" y1="200" x2="140" y2="200" stroke="var(--vermilion)" stroke-width="2" stroke-dasharray="4 3" />
+      </svg>
+      <div class="hourglass-caption">
+        現在 <span class="age" id="ageCaption">-</span> 歳 ／ 経過 <span class="age" id="pctCaption">-</span>%
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background: var(--gold);"></span>落ちた砂＝経過した時間</div>
+      <div class="legend-item"><span class="dot" style="background: var(--vermilion);"></span><span id="legendWorkLabel">就労可能期限</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const MS_PER_DAY = 86400000;
+  const MS_PER_YEAR = 365.2425 * MS_PER_DAY;
+
+  function splitDuration(ms) {
+    const clamped = Math.max(0, ms);
+    const totalDays = Math.floor(clamped / MS_PER_DAY);
+    const years = Math.floor(totalDays / 365.2425);
+    const remDaysAfterYears = Math.floor(totalDays - years * 365.2425);
+    const months = Math.floor(remDaysAfterYears / 30.4369);
+    const days = Math.floor(remDaysAfterYears - months * 30.4369);
+    const totalHours = Math.floor(clamped / 3600000);
+    return { years, months, days, totalDays, totalHours };
+  }
+
+  function fmt(n) { return n.toLocaleString('ja-JP'); }
+
+  const currentAgeEl = document.getElementById('currentAgeInput');
+  const lifeExpectancyEl = document.getElementById('lifeExpectancy');
+  const workEndAgeEl = document.getElementById('workEndAge');
+
+  // 入力された年齢と、その入力時刻を基準に経過時間を加算していく
+  let baseAge = Number(currentAgeEl.value);
+  let baseTimestamp = Date.now();
+  currentAgeEl.addEventListener('input', () => {
+    baseAge = Number(currentAgeEl.value) || 0;
+    baseTimestamp = Date.now();
+  });
+
+  function render() {
+    const lifeExpectancy = Number(lifeExpectancyEl.value);
+    const workEndAge = Number(workEndAgeEl.value);
+    if (!lifeExpectancy || !workEndAge) return;
+
+    const now = Date.now();
+    const currentAge = baseAge + (now - baseTimestamp) / MS_PER_YEAR;
+
+    const remainingLifeYears = Math.max(0, lifeExpectancy - currentAge);
+    const remainingWorkYears = Math.max(0, workEndAge - currentAge);
+
+    const remainingLife = splitDuration(remainingLifeYears * MS_PER_YEAR);
+    const remainingWork = splitDuration(remainingWorkYears * MS_PER_YEAR);
+
+    const workingDaysPerYear = 245; // 概算：週休二日+祝日・年末年始を控除
+    const remainingWorkingDaysApprox = Math.max(0, Math.floor((remainingWork.totalDays / 365.2425) * workingDaysPerYear));
+
+    document.getElementById('lifeValue').innerHTML =
+      `${remainingLife.years}<span class="unit">年</span>${remainingLife.months}<span class="unit">ヶ月</span>${remainingLife.days}<span class="unit">日</span>`;
+    document.getElementById('lifeSub').innerHTML =
+      `合計 ${fmt(remainingLife.totalDays)} 日 / ${fmt(remainingLife.totalHours)} 時間`;
+
+    document.getElementById('workValue').innerHTML =
+      `${remainingWork.years}<span class="unit">年</span>${remainingWork.months}<span class="unit">ヶ月</span>${remainingWork.days}<span class="unit">日</span>`;
+    document.getElementById('workSub').innerHTML =
+      `合計 ${fmt(remainingWork.totalDays)} 日 / ${fmt(remainingWork.totalHours)} 時間<br>実労働日数（概算・年245日換算）: ${fmt(remainingWorkingDaysApprox)} 日`;
+
+    document.getElementById('legendWorkLabel').textContent = `就労可能期限（${workEndAge}歳）`;
+
+    // --- 砂時計の描画 ---
+    const NECK_Y = 150, TOP_Y = 24, BOTTOM_Y = 276;
+    const NECK_HALF = 5, BOTTOM_HALF = 75;
+
+    const pLife = Math.min(1, Math.max(0, currentAge / lifeExpectancy));
+    const workMarkFraction = Math.min(1, Math.max(0, workEndAge / lifeExpectancy));
+
+    const sandTop = document.getElementById('sandTop');
+    const topSandY = NECK_Y - (1 - pLife) * (NECK_Y - TOP_Y);
+    sandTop.setAttribute('y', topSandY);
+    sandTop.setAttribute('height', Math.max(0, NECK_Y - topSandY));
+
+    const sandBottom = document.getElementById('sandBottom');
+    sandBottom.setAttribute('height', Math.max(0, pLife * (BOTTOM_Y - NECK_Y)));
+
+    const markerY = NECK_Y + workMarkFraction * (BOTTOM_Y - NECK_Y);
+    const markerHalfWidth = NECK_HALF + (markerY - NECK_Y) / (BOTTOM_Y - NECK_Y) * (BOTTOM_HALF - NECK_HALF);
+    const markerLine = document.getElementById('workMarkerLine');
+    markerLine.setAttribute('x1', 100 - markerHalfWidth);
+    markerLine.setAttribute('x2', 100 + markerHalfWidth);
+    markerLine.setAttribute('y1', markerY);
+    markerLine.setAttribute('y2', markerY);
+
+    document.getElementById('ageCaption').textContent = currentAge.toFixed(1);
+    document.getElementById('pctCaption').textContent = (pLife * 100).toFixed(1);
+  }
+
+  [currentAgeEl, lifeExpectancyEl, workEndAgeEl].forEach(el => el.addEventListener('input', render));
+  render();
+  setInterval(render, 1000);
+</script>
+</body>
+</html>
